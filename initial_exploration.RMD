@@ -6,26 +6,48 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.width = 12)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(gridExtra)
+
+strong_palette <- c("#00aae6", "#ff8400", "#00d1fc")
+soft_palette <- c("#dcf4fe", "#fff0df")
+
+BIT_theme <- theme_minimal()+
+  theme(plot.title = element_text(color = "#00aae6",
+                                  size = rel(1.8)),
+        plot.subtitle = element_text(color = "#00aae6"),
+        strip.text.x = element_text(size = rel(1.1), 
+                                    colour = "black",
+                                    margin = margin(t = 2,
+                                                    b = 2)),
+        strip.background = element_rect(fill = "#dcf4fe", colour = NA))
+
 ```
 
 
+# Data preparation
+
+## Uni / Bivariate visualisations
+
+Load data, calculate variables required, and calculate a dataset which allows you to calculate trend lines over time. That is, I infer which individuals were in the workforce in any one year based on their hire date and tenure.
 
 ```{r data prep}
 # Loading and calculating data
 data <- read.csv('GCR.csv') %>%
-  dplyr::mutate(gradeAtHire = as.ordered(gradeAtHire),
+  dplyr::mutate(gender = factor(gender, levels = c("M", "F")),
+                gradeAtHire = as.ordered(gradeAtHire),
          age = ageAtHire + tenure,
          gend_dept = paste(gender, department, sep = "_"),
          leaveYear = hireYear + tenure,
          term = ifelse(reason == "terminated", 1, 0))
-str(data)
+# str(data)
 summary(data)
 
-# Workforce over time:
+# Workforce over time: ----
 all_years <- expand.grid(year = unique(c(data$hireYear, data$leaveYear)),
                          id = unique(data$id))
 data_timeline <- dplyr::full_join(data, all_years, by = "id") %>%
@@ -36,7 +58,7 @@ data_timeline <- dplyr::full_join(data, all_years, by = "id") %>%
                 term = ifelse(year != max(year), NA, as.numeric(term)),
                 new = hireYear == year)
 
-# Proportion of women in the workforce any year:
+# Proportion of women in the workforce any year: ----
 workforce_prop_timeline <- data_timeline %>%
   dplyr::group_by(year, gender) %>%
   dplyr::summarise(n = n()) %>%
@@ -45,43 +67,77 @@ workforce_prop_timeline <- data_timeline %>%
   dplyr::select(year, prop_workforce)
 
 
-# People who have left:
+# People who have left: ----
 data_left <- data[!data$current, ]
 ```
 
+
+We assume that the business was founded in `r min(data$hireYear)`. 
+
+# Data exploration
+
+I explored univariate and bivariate distributions of variables I hypothesise may be related to each other and to gender using some basic visualisations. If you are interested, click the buttons below.
+
+<p>
+  <a class="btn btn-primary" data-toggle="collapse" href="#collapse1" role="button" aria-expanded="false" aria-controls="collapse1">
+    Click for visualisations of the current workforce
+  </a>
+</p>
+<div class="collapse" id="collapse1">
+  <div class="card card-body">
 
 ```{r visualise current workforce}
 data_current <- data[data$current, ]
 summary(data_current)
 # Age by gender
 ggplot(data_current, aes(x = gender, y = age))+
-  geom_violin()
+  geom_violin()+
+  BIT_theme
 # Tenure by gender
 ggplot(data_current, aes(x = gender, y = tenure))+
-  geom_violin()
+  geom_violin()+
+  BIT_theme
 # Department by gender
 ggplot(data_current, aes(x = gender, y = department))+
-  geom_bin2d()
+  geom_bin2d()+
+  BIT_theme
 # Grade at hire by gender
 ggplot(data_current, aes(x = gender, y = gradeAtHire))+
-  geom_bin2d()
+  geom_bin2d()+
+  BIT_theme
 # Tenure by department
 ggplot(data_current, aes(x = department, y = tenure))+
-  geom_boxplot()
+  geom_boxplot()+
+  BIT_theme
 # Age by department
 ggplot(data_current, aes(x = department, y = age))+
-  geom_violin()
+  geom_violin()+
+  BIT_theme
 
 # Age by gender and department
 ggplot(data_current, aes(x = gend_dept, y = tenure))+
-  geom_violin()
+  geom_violin()+
+  BIT_theme
 # Mainly the administrative dept has much less experienced women than men, much more similar in operations
 ggplot(data_current, aes(x = gend_dept, y = age))+
-  geom_violin()
+  geom_violin()+
+  BIT_theme
 ggplot(data_current, aes(x = gend_dept, y = ageAtHire))+
-  geom_violin()
+  geom_violin()+
+  BIT_theme
 ```
 
+</div>
+</div>
+
+
+<p>
+  <a class="btn btn-primary" data-toggle="collapse" href="#collapse2" role="button" aria-expanded="false" aria-controls="collapse2">
+    Click for visualisations of the previous leavers
+  </a>
+</p>
+<div class="collapse" id="collapse2">
+  <div class="card card-body">
 
 ```{r visualise leavers}
 # Were there peak leaving years?
@@ -99,33 +155,48 @@ ggplot(data_years, aes(x = leaveYear, y = F_prop))+
 
 # Age by gender
 ggplot(data_left, aes(x = gender, y = age))+
-  geom_violin()
+  geom_violin()+
+  BIT_theme
 # Tenure by gender
 ggplot(data_left, aes(x = gender, y = tenure))+
-  geom_violin()
+  geom_violin()+
+  BIT_theme
 # Department by gender
 ggplot(data_left, aes(x = gender, y = department))+
-  geom_bin2d()
+  geom_bin2d()+
+  BIT_theme
 # Grade at hire by gender
 ggplot(data_left, aes(x = gender, y = gradeAtHire))+
-  geom_bin2d()
+  geom_bin2d()+
+  BIT_theme
 # Tenure by department
 ggplot(data_left, aes(x = department, y = tenure))+
-  geom_boxplot()
+  geom_boxplot()+
+  BIT_theme
 # Age by department
 ggplot(data_left, aes(x = department, y = age))+
-  geom_violin()
+  geom_violin()+
+  BIT_theme
 
 # Age by gender and department
 ggplot(data_left, aes(x = gend_dept, y = tenure))+
-  geom_violin()
+  geom_violin()+
+  BIT_theme
 # Mainly the administrative dept has much less experienced women than men, much more similar in operations
 ggplot(data_left, aes(x = gend_dept, y = age))+
-  geom_violin()
+  geom_violin()+
+  BIT_theme
 ggplot(data_left, aes(x = gend_dept, y = ageAtHire))+
-  geom_violin()
+  geom_violin()+
+  BIT_theme
 ```
 
+</div>
+</div>
+
+## Workforce over time
+
+Calculate the proportion of women in each section of the workforce (department) in a given year, and compare that to the overall proportion of women in the whole workforce.
 
 ```{r workforce in any year}
 data_dept_timeline <- data_timeline  %>%
@@ -143,16 +214,21 @@ ggplot(data_dept_timeline, aes(x = year, y = prop, colour = department))+
        x = "Year",
        y = "Proportion of workers that were female",
        colour = "Department",
-       subtitle = "GCR overall proportion in shown in red")
+       subtitle = "GCR overall proportion in shown in red")+
+  BIT_theme+
+  scale_colour_manual(values = strong_palette)
 ```
 
+## Reasons for leaving
+
+Starting from some basic density plots, I can calculate the proportion of leavers who are women for each separate leaving reason. This tells me whether there are specific reasons that women leave for more often than the general population. Because I saw above that there is a significant difference between the numbers of women between each department, I calculate the reasons separately for each department. 
+
 ```{r Reasons for leaving}
-# Reasons for leaving by gender
-ggplot(data_left, aes(x = gender, y = reason))+
-  geom_bin2d()
 # Reasons for leaving by gender and department
 ggplot(data_left, aes(x = gend_dept, y = reason))+
-  geom_bin2d()
+  geom_bin2d()+
+  BIT_theme+
+  scale_fill_gradientn(colors=strong_palette[1:2])
 
 workforce_dept_prop_timeline <- data_timeline %>%
   dplyr::group_by(year, department, gender) %>%
@@ -192,13 +268,27 @@ ggplot(data_reasons, aes(x = leaveYear, y = prop, colour = reason))+
   labs(title = "Women as a % of all who leave for each reason",
        x = "Year of leaving",
        y = "Proportion of women",
-       subtitle = "Department's overall proportion of women shown in red")
+       subtitle = "Department's overall proportion of women shown in red")+
+  BIT_theme+
+  scale_colour_manual(values = strong_palette)
 
 # Significant association between gender and being terminated?
-chisq.test(table(data$gender, data$term))
+reason_assoc <- chisq.test(table(data$gender, data$term))
 ```
 
+There appears to be a strong association between gender and being terminated, at a Chi squared of `r round(reason_assoc$statistic, 2)`, p `r ifelse(round(reason_assoc$p.value, 3) > 0, paste0("= ", round(reason_assoc$p.value, 3)), "< .001")`.
 
+# Data analysis
+
+I want to dig deeper into this association between gender and being terminated. First, I created a set of mosaic plots to explore the bivariate association between termination and other variables. Click the button below to see those. 
+
+<p>
+  <a class="btn btn-primary" data-toggle="collapse" href="#collapse3" role="button" aria-expanded="false" aria-controls="collapse3">
+    Click for visualisations bivariate associations with termination
+  </a>
+</p>
+<div class="collapse" id="collapse3">
+  <div class="card card-body">
 
 ```{r characteristics of terminated people}
 library("graphics")
@@ -218,17 +308,26 @@ data_gend <- as.table(as.matrix(table(data_left$gender, data_left$term)))
 mosaicplot(data_gend, shade = TRUE, las=2, main = "Gender")
 data_grade <- as.table(as.matrix(table(data_left$gradeAtHire, data_left$term)))
 mosaicplot(data_grade, shade = TRUE, las=2, main = "GradeAtHire")
+```
 
-summary(aov(term ~ gradeAtHire * department * gender * ageAtHire * hireYear, data = data_left))
+</div>
+</div>
+
+I then formalised these analyses with an ANOVA analysis on termination.
+
+```{r anova on termination}
+summary(aov(term ~ gradeAtHire * department * gender * ageAtHire * leaveYear, data = data_left))
 # Main effects of department, gender, and hireYear, but 3-way interaction of GradeAtHire, gender and HireYear
+```
 
+And visualised the three-way interaction I observed in the analysis.
 
-(data_term_leave <- data_left %>%
-  dplyr::filter(leaveYear < max(hireYear)) %>%
+```{r vis termination interaction}
+data_term_leave <- data_left %>%
   dplyr::group_by(leaveYear, department, gender) %>%
-  dplyr::summarise(left = n(),
-                   terminated = sum(term),
-                   prop_term = sum(term) / n(),
+  dplyr::summarise(leave_left = n(),
+                   leave_terminated = sum(term),
+                   leave_prop_term = sum(term) / n(),
                    m_ageAtHire = mean(ageAtHire),
                    sd_ageAtHire = sd(ageAtHire, na.rm = T),
                    m_ageWhenLeft = mean(age),
@@ -236,24 +335,27 @@ summary(aov(term ~ gradeAtHire * department * gender * ageAtHire * hireYear, dat
                    m_tenure = mean(tenure),
                    sd_tenure = sd(tenure),
                    m_gradeAtHire = mean(as.numeric(gradeAtHire)),
-                   sd_gradeAtHire = sd(as.numeric(gradeAtHire))))
+                   sd_gradeAtHire = sd(as.numeric(gradeAtHire))) %>%
+  dplyr::select("year" = leaveYear, department, gender, leave_left, leave_terminated, leave_prop_term)
 
 
-ggplot(data_term_leave, aes(x = leaveYear, y = prop_term, colour = gender))+
+r1 <- ggplot(data_term_leave, aes(x = year, y = leave_prop_term, colour = gender))+
   geom_line(alpha = 0.5)+
   geom_smooth(se = FALSE)+
   facet_wrap(~department)+
   labs(title = "Of those who left, the proportion terminated",
        x = "Year left",
        y = "Proportion terminated",
-       subtitle = "By department, gender and year they left")
+       colour = "Gender",
+       subtitle = "By department, gender and year they left")+
+  BIT_theme+
+  scale_colour_manual(values = strong_palette)
 
 data_term_hire <- data_left %>%
-  dplyr::filter(hireYear < max(hireYear)) %>%
   dplyr::group_by(hireYear, department, gender) %>%
-  dplyr::summarise(left = n(),
-                   terminated = sum(term),
-                   prop_term = sum(term) / n(),
+  dplyr::summarise(hire_left = n(),
+                   hire_terminated = sum(term),
+                   hire_prop_term = sum(term) / n(),
                    m_ageAtHire = mean(ageAtHire),
                    sd_ageAtHire = sd(ageAtHire, na.rm = T),
                    m_ageWhenLeft = mean(age),
@@ -261,19 +363,24 @@ data_term_hire <- data_left %>%
                    m_tenure = mean(tenure),
                    sd_tenure = sd(tenure),
                    m_gradeAtHire = mean(as.numeric(gradeAtHire)),
-                   sd_gradeAtHire = sd(as.numeric(gradeAtHire)))
+                   sd_gradeAtHire = sd(as.numeric(gradeAtHire))) %>%
+  select("year" = hireYear, department, gender, hire_left, hire_terminated, hire_prop_term)
 
 
-ggplot(data_term_hire, aes(x = hireYear, y = prop_term, colour = gender))+
+r2 <- ggplot(data_term_hire, aes(x = year, y = hire_prop_term, colour = gender))+
   geom_line(alpha = 0.5)+
   geom_smooth(se = FALSE)+
   facet_wrap(~department)+
   labs(title = "Of those who left, the proportion terminated",
        x = "Year hired",
        y = "Proportion terminated",
-       subtitle = "By department, gender and year they were hired")
+     subtitle = "By department, gender and year they were hired")+
+  BIT_theme+
+  scale_colour_manual(values = strong_palette)
 
+grid.arrange(r1, r2, ncol = 1)
 ```
+
 
 
 ```{r rate of termination for men and women}
@@ -286,12 +393,27 @@ data_rate <- data_timeline %>%
   dplyr::mutate(joining_rate = joined / workforce,
                 leaving_rate = left / workforce,
                 termination_rate = terminated / workforce,
-                term_leaving_rate = terminated / left)
+                term_leaving_rate = terminated / left) %>%
+  dplyr::select(year, department, gender, 
+                "Joining rate" = joining_rate, 
+                "Leaving rate" = leaving_rate, 
+                "Termination rate - workforce" = termination_rate, 
+                "Terminations - within leavers" = term_leaving_rate) %>%
+  tidyr::gather("rate", "value", -year, -department, -gender)
 
-ggplot(data_rate, aes(x = year, y = termination_rate, colour = gender))+
+ggplot(data_rate, aes(x = year, y = value, colour = gender))+
   geom_line(alpha = 0.5)+
   geom_smooth(se = FALSE)+
-  facet_wrap(~department)
+  facet_wrap(department~rate, ncol = 4, scales = "free")+
+  labs(title = "Rates of joining, leaving and termination in the workforce",
+       x = "Year",
+       y = "Rate",
+       colour = "Gender",
+       subtitle = "As a proportion of the male or female workforce respectively, or of leavers only")+
+  BIT_theme+
+  scale_colour_manual(values = strong_palette)
 ```
+
+
 
 
