@@ -86,7 +86,7 @@ I explored univariate and bivariate distributions of variables I hypothesise may
 <div class="collapse" id="collapse1">
   <div class="card card-body">
 
-```{r visualise current workforce}
+```{r visualise current workforce, message=FALSE}
 data_current <- data[data$current, ]
 summary(data_current)
 # Age by gender
@@ -139,7 +139,7 @@ ggplot(data_current, aes(x = gend_dept, y = ageAtHire))+
 <div class="collapse" id="collapse2">
   <div class="card card-body">
 
-```{r visualise leavers}
+```{r visualise leavers, message=FALSE}
 # Were there peak leaving years?
 hist(data_left$leaveYear, breaks = length(unique(data_left$leaveYear)))
 # There were some spikes: 1986, 2002, 2008/9
@@ -198,7 +198,7 @@ ggplot(data_left, aes(x = gend_dept, y = ageAtHire))+
 
 Calculate the proportion of women in each section of the workforce (department) in a given year, and compare that to the overall proportion of women in the whole workforce.
 
-```{r workforce in any year}
+```{r workforce in any year, message=FALSE}
 data_dept_timeline <- data_timeline  %>%
   dplyr::group_by(year, department, gender) %>%
   dplyr::summarise(n = n()) %>%
@@ -223,7 +223,7 @@ ggplot(data_dept_timeline, aes(x = year, y = prop, colour = department))+
 
 Starting from some basic density plots, I can calculate the proportion of leavers who are women for each separate leaving reason. This tells me whether there are specific reasons that women leave for more often than the general population. Because I saw above that there is a significant difference between the numbers of women between each department, I calculate the reasons separately for each department. 
 
-```{r Reasons for leaving}
+```{r Reasons for leaving, message=FALSE}
 # Reasons for leaving by gender and department
 ggplot(data_left, aes(x = gend_dept, y = reason))+
   geom_bin2d()+
@@ -290,7 +290,7 @@ I want to dig deeper into this association between gender and being terminated. 
 <div class="collapse" id="collapse3">
   <div class="card card-body">
 
-```{r characteristics of terminated people}
+```{r characteristics of terminated people, message=FALSE}
 library("graphics")
 data_dept <- as.table(as.matrix(table(data_left$department, data_left$term)))
 mosaicplot(data_dept, shade = TRUE, las=2, main = "Department")
@@ -315,14 +315,14 @@ mosaicplot(data_grade, shade = TRUE, las=2, main = "GradeAtHire")
 
 I then formalised these analyses with an ANOVA analysis on termination.
 
-```{r anova on termination}
+```{r anova on termination, message=FALSE}
 summary(aov(term ~ gradeAtHire * department * gender * ageAtHire * leaveYear, data = data_left))
 # Main effects of department, gender, and hireYear, but 3-way interaction of GradeAtHire, gender and HireYear
 ```
 
 And visualised the three-way interaction I observed in the analysis.
 
-```{r vis termination interaction}
+```{r vis termination interaction, message=FALSE}
 data_term_leave <- data_left %>%
   dplyr::group_by(leaveYear, department, gender) %>%
   dplyr::summarise(leave_left = n(),
@@ -383,7 +383,7 @@ grid.arrange(r1, r2, ncol = 1)
 
 
 
-```{r rate of termination for men and women}
+```{r rate of termination for men and women, message=FALSE}
 data_rate <- data_timeline %>%
   dplyr::group_by(year, department, gender) %>%
   dplyr::summarise(workforce = n(),
@@ -414,9 +414,13 @@ ggplot(data_rate, aes(x = year, y = value, colour = gender))+
   scale_colour_manual(values = strong_palette)
 ```
 
+# Male and female firing rates
 
+So what would have happened if women had been fired at the same rate as men for the last few years?
 
-```{r termination rate}
+First, I calculated a 5-year rolling average of the rate of termination for men, and used that to calculate the female workforce based on the actual workforce.
+
+```{r termination rate, message=FALSE}
 
 # Workforce forecast: -----
 yeargenderreason <- expand.grid(year = unique(data_timeline$year),
@@ -494,7 +498,11 @@ ggplot(pop, aes(x = year, y = value, group = key, colour = key))+
   geom_line(stat = "identity")
 ```
 
-```{r forecasting}
+This prediction is clearly too linear and static. Instead, I decomposed the rate of termination for men to obtain its trend, and applied that trend to the female rate of termination. Using that rate of termination, I could calculate what the female workforce would've been each year. 
+
+I chose 2010 as the starting year to see what the impact would've been compounded over a few years. 
+
+```{r forecasting, message=FALSE}
 library(forecast)
 
 # How many women would you have had now if you had fired them at the same rate as men since 2011?
@@ -552,8 +560,8 @@ workforce_results <- workforce_freq %>%
           select(year, total)) %>%
   merge(., workforce_freq_new, by = "year") %>%
   dplyr::select(year, 
-                "Actual number of women in the workforce" = total, 
-                "Forecast number of women in the workforce" = forecast_workforce) %>%
+                "Actual" = total, 
+                "Forecast" = forecast_workforce) %>%
   tidyr::gather(key, value, -year)
 
 # Plot
@@ -567,7 +575,7 @@ ggplot(workforce_results[workforce_results$year > 2005, ],
   labs(title = "If women had been fired at the same rate as men...",
        subtitle = "By now, you'd have nearly 100 more women",
        x = "Year",
-       y = "Forecast or actual number of women in the workforce",
+       y = "Number of women in the workforce",
        colour = " ")+
   BIT_theme+
   scale_colour_manual(values = c(strong_palette[2], strong_palette[1]))
