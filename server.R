@@ -5,6 +5,11 @@ function(input, output) {
     format(as.Date(input$year_filter),"%Y")
   })
   
+  output$headline <- renderUI({
+    tags$h2(paste0("If women had been fired at the same rate as men since ", 
+                   year_filter()))
+  })
+  
   data_freq <- reactive({
     req(input$year_filter)
     data_freq <- rbind(workforce_trend %>% mutate(qrt = "1"),
@@ -97,6 +102,14 @@ function(input, output) {
     return(round(difference$diff[1], 0))
   })
   
+  output$difference <- renderValueBox({
+    valueBox(
+      value = as.numeric(difference()),
+      subtitle = "More women by now",
+      icon = icon("credit-card")
+    )
+  })
+  
   output$forecast_plot <- renderPlot({
     ggplot(workforce_forecast()[workforce_forecast()$year > (as.numeric(year_filter())-5), ], 
            aes(x = year, y = value, colour = reorder(key, desc(key))))+
@@ -105,9 +118,7 @@ function(input, output) {
                                            workforce_forecast()$year > (as.numeric(year_filter())-5), ])+
       # geom_smooth(data = workforce_forecast()[workforce_forecast()$year > (year_filter() - 1), ], 
       #             se = FALSE)+
-      labs(title = "If women had been fired at the same rate as men...",
-           subtitle = paste0("By now, you'd have ", difference(), " more women"),
-           x = "Year",
+      labs(x = "Year",
            y = "Number of women in the workforce",
            colour = " ")+
       BIT_theme+

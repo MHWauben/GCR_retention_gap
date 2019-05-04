@@ -1,5 +1,5 @@
 ui <- dashboardPage(
-  dashboardHeader(),
+  dashboardHeader(title = "GCR retention gap"),
   dashboardSidebar(sidebarMenu(
     id = "tabs",
     menuItem(
@@ -21,9 +21,18 @@ ui <- dashboardPage(
               language = "en", width = NULL)
   )),
   dashboardBody(
+    tags$head(tags$style(HTML(".small-box {height: 100px}
+                              .box-body {margin-top: 0px}"))),
     tabItems(
       tabItem(
         tabName = "headline",
+        fluidRow(
+          box(width = 8,
+              height = 100,
+              uiOutput('headline')
+              ),
+          valueBoxOutput('difference')
+        ),
         fluidRow(
           box(title = "",
               status = "primary",
