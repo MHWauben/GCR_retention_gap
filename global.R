@@ -5,6 +5,7 @@ library(plotly)
 library(shinydashboard)
 library(dplyr)
 library(tidyr)
+library(data.table)
 
 
 ### Set theme -----
@@ -52,6 +53,25 @@ workforce_prop_timeline <- data_timeline %>%
   dplyr::mutate(prop_workforce = n / sum(n)) %>%
   dplyr::filter(gender == "F") %>%
   dplyr::select(year, prop_workforce)
+
+# Workforce over time - rate of termination -----
+workforce_trend <- data_timeline %>%
+  dplyr::group_by(year, gender, reason) %>%
+  dplyr::summarise(number = n()) %>%
+  merge(., yeargenderreason, all.x = T, all.y = T, by = c("year", "gender", "reason")) %>%
+  dplyr::mutate(number = ifelse(is.na(number), 0, number),
+                reason = ifelse(is.na(reason), "stayed", reason)) %>%
+  tidyr::spread(reason, number) %>%
+  merge(., new_year, all.x = T, all.y = T, by = c("year", "gender")) %>%
+  dplyr::mutate(total = stayed + retired + resigned + terminated) %>%
+  dplyr::mutate(join_rate = new / total,
+                term_rate = terminated / total,
+                nonterm_rate = (retired + resigned) / total) %>%
+  dplyr::ungroup() %>%
+  dplyr::group_by(gender) %>%
+  dplyr::mutate(join_avg = zoo::rollmean(join_rate, 5, na.pad = T, align = "right"),
+                term_avg = zoo::rollmean(term_rate, 5, na.pad = T, align = "right"),
+                nonterm_avg = zoo::rollmean(nonterm_rate, 5, na.pad = T, align = "right"))
 
 
 # People who have left: ----

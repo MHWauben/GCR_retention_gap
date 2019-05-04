@@ -1,4 +1,122 @@
 function(input, output) { 
+  
+  # Conditional forecast -----
+  year_filter <- reactive({
+    format(as.Date(input$year_filter),"%Y")
+  })
+  
+  data_freq <- reactive({
+    req(input$year_filter)
+    data_freq <- rbind(workforce_trend %>% mutate(qrt = "1"),
+                       workforce_trend %>% mutate(qrt = "3")) %>%
+      dplyr::filter(year > year_filter())
+    return(data_freq)
+    print("data_freq done")
+  })
+  
+  m_trend <- reactive({
+    m_trend <- ts(data_freq()[data_freq()$gender == "M", ]$term_rate, frequency = 2) %>%
+      decompose(type = "multiplicative")
+    return(m_trend)
+    print("m_trend done")
+  })
+  
+  f_terms <- reactive({
+    f_terms <- ts(data_freq()[data_freq()$gender == "M", ]$term_rate, frequency = 2) %>%
+      decompose(type = "multiplicative")
+    return(f_terms)
+    print("f_terms done")
+  })
+  
+  f_f_forecast <- reactive({
+    f_f_forecast <- f_terms()$seasonal * f_terms()$random * f_terms()$trend
+    return(f_f_forecast)
+  })
+  
+  f_m_forecast <- reactive({
+    f_m_forecast <- f_terms()$seasonal * f_terms()$random * m_trend()$trend
+    return(f_m_forecast)
+  })
+  
+  workforce_WIP <- reactive({
+    workforce_WIP <- data_freq() %>%
+      dplyr::filter(gender == "F") %>%
+      dplyr::mutate(f_m_forecast = c(as.vector(f_m_forecast()[2:length(f_m_forecast())]), 2),
+                    workforce = total) %>%
+      dplyr::mutate(forecast_term = total * f_m_forecast) %>%
+      dplyr::mutate(prev_term = lag(forecast_term, 1)) %>%
+      dplyr::mutate(change = new - resigned - retired - prev_term) %>%
+      dplyr::select(year, gender, workforce, change) %>%
+      setDT(.)
+    
+    for (row in 3:nrow(workforce_WIP)){
+      new_workforce <- workforce_WIP[row - 1L, workforce + change]
+      workforce_WIP[row, workforce := new_workforce]
+    }
+    
+    return(workforce_WIP)
+  })
+    
+  workforce_freq_new <- reactive({
+    workforce_freq_new <- copy(workforce_WIP()) %>%
+      .[, .(forecast_workforce = mean(workforce)), 
+        by = "year"] %>%
+      rbind(., workforce_trend %>% 
+              filter(year <= year_filter() & gender == "F") %>% 
+              ungroup () %>% 
+              select(year, forecast_workforce = total))
+    
+    return(workforce_freq_new)
+  })
+  
+  workforce_forecast <- reactive({
+    workforce_forecast <- data_freq() %>%
+    dplyr::select(-qrt) %>%
+    unique(.) %>%
+    dplyr::filter(gender == "F") %>%
+    dplyr::ungroup() %>%
+    dplyr::select(year, total) %>%
+    rbind(., workforce_trend %>% 
+            filter(year <= year_filter() & gender == "F") %>% 
+            ungroup () %>% 
+            select(year, total)) %>%
+    merge(., workforce_freq_new(), by = "year") %>%
+    dplyr::select(year, 
+                  "Actual" = total, 
+                  "Forecast" = forecast_workforce) %>%
+    tidyr::gather(key, value, -year)
+    return(workforce_forecast)
+  })
+  
+  difference <- renderText({
+    last_year <- max(workforce_forecast()$year)
+    difference <- workforce_forecast() %>%
+      dplyr::filter(year == last_year) %>%
+      tidyr::spread(key, value) %>%
+      dplyr::mutate(diff = Forecast - Actual)
+    return(round(difference$diff[1], 0))
+  })
+  
+  output$forecast_plot <- renderPlot({
+    ggplot(workforce_forecast()[workforce_forecast()$year > (as.numeric(year_filter())-5), ], 
+           aes(x = year, y = value, colour = reorder(key, desc(key))))+
+      geom_line()+
+      geom_line(data = workforce_forecast()[workforce_forecast()$year <= year_filter() & 
+                                           workforce_forecast()$year > (as.numeric(year_filter())-5), ])+
+      # geom_smooth(data = workforce_forecast()[workforce_forecast()$year > (year_filter() - 1), ], 
+      #             se = FALSE)+
+      labs(title = "If women had been fired at the same rate as men...",
+           subtitle = paste0("By now, you'd have ", difference(), " more women"),
+           x = "Year",
+           y = "Number of women in the workforce",
+           colour = " ")+
+      BIT_theme+
+      scale_colour_manual(values = c(strong_palette[2], strong_palette[1]))
+  })
+  
+  
+  # Rate plots -----
+  
   data_rate <- data_timeline %>%
     dplyr::group_by(year,  gend_dept) %>%
     dplyr::summarise(workforce = n(),
