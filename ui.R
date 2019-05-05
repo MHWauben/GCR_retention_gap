@@ -9,8 +9,13 @@ ui <- dashboardPage(
     menuItem(
       "Detail", 
       tabName = "detail", 
-      icon = icon("th"))
-  )),
+      icon = icon("th")),
+    menuItem(
+      "Statistics",
+      tabName = "stats",
+      icon = icon("tasks"))
+    )
+  ),
   dashboardBody(
     tags$head(
       tags$style(HTML("h2 {font-weight: 500;
@@ -85,6 +90,52 @@ ui <- dashboardPage(
           )
         
         )
+      ),
+      tabItem(tabName = "stats",
+              fluidRow(
+                box(width = 12,
+                    h2("Further statistical exploration"),
+                    htmlOutput('stats_explanation')
+                )
+              ),
+              fluidRow(
+                box(width = 6,
+                    status = "info",
+                    checkboxGroupInput("predictors", "Choose the factors",
+                                   selected = list("department", "gender"),
+                                   choiceNames = list("Department",
+                                                      "Gender",
+                                                      "Grade at Hire", 
+                                                      "Age at Hire",
+                                                      "Hiring Year"),
+                                   choiceValues = list("department", 
+                                                       "gender", 
+                                                       "gradeAtHire",
+                                                       "ageAtHire",
+                                                       "hireYear"),
+                                   inline = TRUE)
+                ),
+                box(width = 3,
+                    status = "info",
+                    numericInput(inputId = "year_min",
+                                label = "First year for the analysis",
+                                value = min(data_timeline$year),
+                                min = min(data_timeline$year),
+                                max = max(data_timeline$year) - 1)
+                ),
+                box(width = 3, 
+                    status = "info",
+                    numericInput(inputId = "year_max",
+                                 label = "Last year for the analysis",
+                                 value = max(data_timeline$year),
+                                 min = min(data_timeline$year) + 1,
+                                 max = max(data_timeline$year))
+                )
+              ),
+              fluidRow(
+                box(width = 12,
+                    dataTableOutput('aovSummary')
+              ))
       )
     )
   )

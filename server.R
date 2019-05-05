@@ -32,14 +32,16 @@ function(input, output) {
   })
   
   m_trend <- reactive({
-    m_trend <- ts(data_freq()[data_freq()$gender == "M", ]$term_rate, frequency = 2) %>%
+    m_trend <- ts(data_freq()[data_freq()$gender == "M", ]$term_rate, 
+                  frequency = 2) %>%
       decompose(type = "multiplicative")
     return(m_trend)
     print("m_trend done")
   })
   
   f_terms <- reactive({
-    f_terms <- ts(data_freq()[data_freq()$gender == "M", ]$term_rate, frequency = 2) %>%
+    f_terms <- ts(data_freq()[data_freq()$gender == "M", ]$term_rate, 
+                  frequency = 2) %>%
       decompose(type = "multiplicative")
     return(f_terms)
     print("f_terms done")
@@ -125,42 +127,6 @@ function(input, output) {
     )
   })
   
-  # output$forecast_plot <- renderPlot({
-  #   ggplot(workforce_forecast()[workforce_forecast()$year > (as.numeric(year_filter())-5), ], 
-  #          aes(x = year, y = value, colour = reorder(key, desc(key))))+
-  #     geom_line()+
-  #     geom_line(data = workforce_forecast()[workforce_forecast()$year <= year_filter() & 
-  #                                          workforce_forecast()$year > (as.numeric(year_filter())-5), ])+
-  #     # geom_smooth(data = workforce_forecast()[workforce_forecast()$year > (year_filter() - 1), ], 
-  #     #             se = FALSE)+
-  #     labs(x = "Year",
-  #          y = "Number of women in the workforce",
-  #          colour = " ")+
-  #     BIT_theme+
-  #     scale_colour_manual(values = c(strong_palette[2], strong_palette[1]))
-  # })
-  
-  headline_plot <- function(year, var1, var2, name) {
-    plot_ly(x = ~year, y = ~var1, 
-            name = 'Forecast',
-            type = 'scatter', mode = 'lines', 
-            line = list(shape = "spline",
-                        color = 'rgb(255, 132, 0)'),
-            showlegend = TRUE,
-            hoverinfo = "all") %>%
-      add_trace(y = ~var2, 
-                name = 'Actual',
-                type = 'scatter', mode = 'lines', 
-                line = list(shape = "spline",
-                            color = "rgb(0, 209, 252)"),
-                showlegend = TRUE,
-                hoverinfo="all") %>%
-      layout(xaxis = list(title = "Year"),
-             yaxis = list (title = "Number of women in the workforce"),
-             legend = list(x = 100,
-                           y = 0.5))
-  }
-  
   output$forecast <- renderPlotly({
     headline_plot(difference()$year,
                   difference()$Forecast,
@@ -170,57 +136,6 @@ function(input, output) {
   
   
   # Rate plots -----
-  
-  data_rate <- data_timeline %>%
-    dplyr::group_by(year,  gend_dept) %>%
-    dplyr::summarise(workforce = n(),
-                     left = sum(current != TRUE),
-                     joined = sum(new == TRUE),
-                     terminated = sum(term, na.rm = T)) %>%
-    dplyr::mutate(joining_rate = round(joined / workforce, 3),
-                  leaving_rate = round(left / workforce, 3),
-                  termination_rate = round(terminated / workforce, 3),
-                  term_leaving_rate = round(terminated / left, 3)) %>%
-    dplyr::select(year, gend_dept, joining_rate, 
-                  leaving_rate, termination_rate, term_leaving_rate) %>%
-    tidyr::gather(variable, value, -(year:gend_dept)) %>%
-    dplyr::mutate(rate = paste0(gend_dept, variable),
-                  gend_dept = NULL,
-                  variable = NULL) %>%
-    tidyr::spread(key = rate, value = value)
-  
-  two_lines <- function(year, var1, var2, name) {
-    plot_ly(x = ~year, y = ~var1, 
-            type = 'scatter', mode = 'lines', 
-            line = list(alpha = 0.5,
-                        shape = "spline",
-                        color = 'rgba(255, 132, 0, 0.25)'),
-            showlegend = FALSE,
-            hoverinfo = "all") %>%
-      add_lines(y = ~fitted(loess(var1~year)),
-                name = paste0("Female "), 
-                line = list(color = 'rgba(255, 132, 0, 1)'),
-                showlegend = TRUE,
-                hoverinfo="none") %>%
-      add_trace(y = ~var2, 
-                type = 'scatter', mode = 'lines', 
-                line = list(alpha = 0.5,
-                            shape = "spline",
-                            color = "rgba(0, 209, 252, 0.25)"),
-                showlegend = FALSE,
-                hoverinfo="all") %>%
-      add_lines(y = ~fitted(loess(var2~year)),
-                name = paste0("Male "),
-                line = list(color = "rgba(0, 209, 252, 1)"),
-                showlegend = TRUE,
-                hoverinfo="false") %>%
-      layout(xaxis = list(title = " "),
-             yaxis = list (title = "Rate"),
-             legend = list(orientation = 'h', 
-                           xanchor = "center",  
-                           x = 0.5,
-                           y = -0.2))
-  }
   
   output$join_adm <- renderPlotly({
     two_lines(data_rate$year, 
@@ -243,13 +158,6 @@ function(input, output) {
               "administrative termination rate out of the workforce")
   })
   
-  # output$term_leave_adm <- renderPlotly({
-  #   two_lines(data_rate$year,
-  #             data_rate$F_Administrativeterm_leaving_rate,
-  #             data_rate$M_Administrativeterm_leaving_rate,
-  #             "administrative termination rate out of the leavers")
-  # })
-  
   output$join_op <- renderPlotly({
     two_lines(data_rate$year, 
               data_rate$F_Operationaljoining_rate, 
@@ -271,13 +179,51 @@ function(input, output) {
               "operational termination rate out of the workforce")
   })
   
-  # output$term_leave_op <- renderPlotly({
-  #   two_lines(data_rate$year,
-  #             data_rate$F_Operationalterm_leaving_rate,
-  #             data_rate$M_Operationalterm_leaving_rate,
-  #             "operational termination rate out of the leavers")
-  # })
   
+  # Statistical association between gender and termination ----
   
+  output$stats_explanation <- renderUI({
+    HTML(paste0("This page may be used by GCR internal statisticians to establish the relationship between the termination rate and factors other than gender. ",
+                "You can select any number of predictors below. ",
+                "You can also select which years of data to include. ",
+                "The table will show you the summary table of an ANOVA test, highlighting any p-values below 0.05. ",
+                "<p/> ",
+                "<b>NOTE:</b> this analysis only includes leavers. ", 
+                "Therefore, this analysis explores the relationship between these predictors and the reason for leaving, not which individuals leave in the first place. ",
+                "To explore this relationship, use the graphs under the Detail tab. "))
+  })
+  
+  aov_data <- reactive({
+    aov_data <- data_left %>%
+      dplyr::filter(year >= input$year_min & year <= input$year_max)
+    return(aov_data)
+  })
+  
+  anova_formula <- reactive({
+    as.formula(paste0("term ~ ", paste(input$predictors, collapse = " * ")))
+  })
+  
+  aovSummary <- reactive({
+    aovSummary <- broom::tidy(anova(aov(anova_formula(), data = aov_data()))) %>%
+      dplyr::mutate(sumsq = round(sumsq, 2),
+                    statistic = round(statistic, 2),
+                    p.value = round(p.value, 3),
+                    sign = ifelse(p.value < 0.05,
+                                  "Significant",
+                                  "")) %>%
+      dplyr::select(Term = term,
+                    "Degrees of Freedom" = df,
+                    "Sum of Squares" = sumsq,
+                    "Statistic" = statistic,
+                    "p value" = p.value,
+                    "Significant?" = sign)
+  })
+  
+  output$aovSummary <- renderDataTable({
+    DT::datatable(aovSummary(),
+                  options = list(pageLength = nrow(aovSummary()))) %>% 
+      formatStyle('Significant?', target = "row", 
+                  backgroundColor = styleEqual(c('Significant'), c("#ff8400")))
+  })
   
   }
