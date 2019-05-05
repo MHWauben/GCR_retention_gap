@@ -12,8 +12,11 @@ ui <- dashboardPage(
       icon = icon("th"))
   )),
   dashboardBody(
-    tags$head(tags$style(HTML(".small-box {height: 100px}
-                              .box-body {margin-top: 0px}"))),
+    tags$head(
+      tags$style(HTML("h2 {font-weight: 500;
+                            line-height: 1.1;
+                            color: #00aae6;}"))
+      ),
     tabItems(
       tabItem(
         tabName = "headline",
@@ -24,7 +27,7 @@ ui <- dashboardPage(
         ),
         fluidRow(
           box(width = 8,
-              status = "primary",
+              status = "info",
               selectInput(inputId = "year_filter",
                           label = "Year policy implemented",
                           choices = c(2005:(max(data$hireYear) - 3)),
@@ -45,12 +48,12 @@ ui <- dashboardPage(
               ),
         fluidRow(
           box(title = "Joining rate",
-              status = "primary",
+              status = "info",
               width = 4,
               plotlyOutput('join_adm')
           ),
           box(title = "Leaving rate",
-              status = "primary",
+              status = "info",
               width = 4,
               plotlyOutput('leave_adm')
           ),
@@ -66,12 +69,12 @@ ui <- dashboardPage(
         ),
         fluidRow(
           box(title = "Joining rate",
-              status = "primary",
+              status = "info",
               width = 4,
               plotlyOutput('join_op')
           ),
           box(title = "Leaving rate",
-              status = "primary",
+              status = "info",
               width = 4,
               plotlyOutput('leave_op')
           ),

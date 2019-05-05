@@ -120,7 +120,8 @@ function(input, output) {
     valueBox(
       value = difference()[nrow(difference()), "diff"],
       subtitle = "More women by now",
-      icon = icon("credit-card")
+      icon = icon("credit-card"),
+      color = "aqua"
     )
   })
   
