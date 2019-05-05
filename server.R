@@ -2,12 +2,24 @@ function(input, output) {
   
   # Conditional forecast -----
   year_filter <- reactive({
-    format(as.Date(input$year_filter),"%Y")
+    input$year_filter
   })
   
   output$headline <- renderUI({
     tags$h2(paste0("If women had been fired at the same rate as men since ", 
                    year_filter()))
+  })
+  
+  output$explanation <- renderUI({
+    HTML(paste0("As a proportion of the population, women and men join and leave at the same rate. ",
+           "However, at GCR women are much more likely to be terminated than men. ",
+           "Termination is a human decision: this difference indicates some gender bias in the termination process. ",
+           "This bias can be reduced through implementing behavioural insights interventions. ",
+           "<p/> ",
+           "What if the termination rate for women was the same as for men? ",
+           "<p/> ",
+           "Use the drop-down below to select the year at which you could have changed the termination process to be less biased. ",
+           "The graph will then show how many more women you would have retained by this year. "))
   })
   
   data_freq <- reactive({
@@ -93,36 +105,66 @@ function(input, output) {
     return(workforce_forecast)
   })
   
-  difference <- renderText({
-    last_year <- max(workforce_forecast()$year)
+  difference <- reactive({
     difference <- workforce_forecast() %>%
-      dplyr::filter(year == last_year) %>%
       tidyr::spread(key, value) %>%
-      dplyr::mutate(diff = Forecast - Actual)
-    return(round(difference$diff[1], 0))
+      dplyr::mutate(diff = round(Forecast - Actual, 0),
+                    Forecast = round(Forecast, 0),
+                    Actual = round(Actual, 0)) %>%
+      dplyr::filter(year > as.numeric(year_filter()) - 5) %>%
+      dplyr::arrange(year)
+    return(difference)
   })
   
   output$difference <- renderValueBox({
     valueBox(
-      value = as.numeric(difference()),
+      value = difference()[nrow(difference()), "diff"],
       subtitle = "More women by now",
       icon = icon("credit-card")
     )
   })
   
-  output$forecast_plot <- renderPlot({
-    ggplot(workforce_forecast()[workforce_forecast()$year > (as.numeric(year_filter())-5), ], 
-           aes(x = year, y = value, colour = reorder(key, desc(key))))+
-      geom_line()+
-      geom_line(data = workforce_forecast()[workforce_forecast()$year <= year_filter() & 
-                                           workforce_forecast()$year > (as.numeric(year_filter())-5), ])+
-      # geom_smooth(data = workforce_forecast()[workforce_forecast()$year > (year_filter() - 1), ], 
-      #             se = FALSE)+
-      labs(x = "Year",
-           y = "Number of women in the workforce",
-           colour = " ")+
-      BIT_theme+
-      scale_colour_manual(values = c(strong_palette[2], strong_palette[1]))
+  # output$forecast_plot <- renderPlot({
+  #   ggplot(workforce_forecast()[workforce_forecast()$year > (as.numeric(year_filter())-5), ], 
+  #          aes(x = year, y = value, colour = reorder(key, desc(key))))+
+  #     geom_line()+
+  #     geom_line(data = workforce_forecast()[workforce_forecast()$year <= year_filter() & 
+  #                                          workforce_forecast()$year > (as.numeric(year_filter())-5), ])+
+  #     # geom_smooth(data = workforce_forecast()[workforce_forecast()$year > (year_filter() - 1), ], 
+  #     #             se = FALSE)+
+  #     labs(x = "Year",
+  #          y = "Number of women in the workforce",
+  #          colour = " ")+
+  #     BIT_theme+
+  #     scale_colour_manual(values = c(strong_palette[2], strong_palette[1]))
+  # })
+  
+  headline_plot <- function(year, var1, var2, name) {
+    plot_ly(x = ~year, y = ~var1, 
+            name = 'Forecast',
+            type = 'scatter', mode = 'lines', 
+            line = list(shape = "spline",
+                        color = 'rgb(255, 132, 0)'),
+            showlegend = TRUE,
+            hoverinfo = "all") %>%
+      add_trace(y = ~var2, 
+                name = 'Actual',
+                type = 'scatter', mode = 'lines', 
+                line = list(shape = "spline",
+                            color = "rgb(0, 209, 252)"),
+                showlegend = TRUE,
+                hoverinfo="all") %>%
+      layout(xaxis = list(title = "Year"),
+             yaxis = list (title = "Number of women in the workforce"),
+             legend = list(x = 100,
+                           y = 0.5))
+  }
+  
+  output$forecast <- renderPlotly({
+    headline_plot(difference()$year,
+                  difference()$Forecast,
+                  difference()$Actual,
+                  " ")
   })
   
   
@@ -200,12 +242,12 @@ function(input, output) {
               "administrative termination rate out of the workforce")
   })
   
-  output$term_leave_adm <- renderPlotly({
-    two_lines(data_rate$year,
-              data_rate$F_Administrativeterm_leaving_rate,
-              data_rate$M_Administrativeterm_leaving_rate,
-              "administrative termination rate out of the leavers")
-  })
+  # output$term_leave_adm <- renderPlotly({
+  #   two_lines(data_rate$year,
+  #             data_rate$F_Administrativeterm_leaving_rate,
+  #             data_rate$M_Administrativeterm_leaving_rate,
+  #             "administrative termination rate out of the leavers")
+  # })
   
   output$join_op <- renderPlotly({
     two_lines(data_rate$year, 
@@ -228,12 +270,12 @@ function(input, output) {
               "operational termination rate out of the workforce")
   })
   
-  output$term_leave_op <- renderPlotly({
-    two_lines(data_rate$year,
-              data_rate$F_Operationalterm_leaving_rate,
-              data_rate$M_Operationalterm_leaving_rate,
-              "operational termination rate out of the leavers")
-  })
+  # output$term_leave_op <- renderPlotly({
+  #   two_lines(data_rate$year,
+  #             data_rate$F_Operationalterm_leaving_rate,
+  #             data_rate$M_Operationalterm_leaving_rate,
+  #             "operational termination rate out of the leavers")
+  # })
   
   
   

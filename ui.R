@@ -9,16 +9,7 @@ ui <- dashboardPage(
     menuItem(
       "Detail", 
       tabName = "detail", 
-      icon = icon("th")),
-    dateInput(inputId = "year_filter", 
-              label = "Year policy implemented", 
-              value = '2010-01-01', 
-              min = '2005-01-01', 
-              max = '2017-12-31',
-              format = "yyyy", 
-              startview = "year", 
-              weekstart = 0,
-              language = "en", width = NULL)
+      icon = icon("th"))
   )),
   dashboardBody(
     tags$head(tags$style(HTML(".small-box {height: 100px}
@@ -27,63 +18,68 @@ ui <- dashboardPage(
       tabItem(
         tabName = "headline",
         fluidRow(
+          box(width = 12,
+              h2("If women had been fired at the same rate as men..."),
+              htmlOutput('explanation'))
+        ),
+        fluidRow(
           box(width = 8,
-              height = 100,
-              uiOutput('headline')
-              ),
+              status = "primary",
+              selectInput(inputId = "year_filter",
+                          label = "Year policy implemented",
+                          choices = c(2005:(max(data$hireYear) - 3)),
+                          selected = 2010)
+          ),
           valueBoxOutput('difference')
         ),
         fluidRow(
-          box(title = "",
-              status = "primary",
-              width = 12,
-              plotOutput('forecast_plot'))
+          column(width = 12, 
+                 plotlyOutput('forecast')
+                 )
         )
         ),
       tabItem(tabName = "detail",
-        h2("Administrative department"),
+              fluidRow(
+                box(width = 12,
+                    h2("Administrative department"))
+              ),
         fluidRow(
           box(title = "Joining rate",
               status = "primary",
-              width = 3,
+              width = 4,
               plotlyOutput('join_adm')
           ),
           box(title = "Leaving rate",
               status = "primary",
-              width = 3,
+              width = 4,
               plotlyOutput('leave_adm')
           ),
-          box(title = "Termination rate - workforce",
+          box(title = "Termination rate",
               status = "warning",
-              width = 3,
+              width = 4,
               plotlyOutput('term_adm')
-          ),
-          box(title = "Termination rate - leavers",
-              status = "warning",
-              width = 3,
-              plotlyOutput('term_leave_adm'))
+          )
         ),
-        h2("Operational department"),
+        fluidRow(
+          box(width = 12, 
+              h2("Operational department"))
+        ),
         fluidRow(
           box(title = "Joining rate",
               status = "primary",
-              width = 3,
+              width = 4,
               plotlyOutput('join_op')
           ),
           box(title = "Leaving rate",
               status = "primary",
-              width = 3,
+              width = 4,
               plotlyOutput('leave_op')
           ),
           box(title = "Termination rate - workforce",
               status = "warning",
-              width = 3,
+              width = 4,
               plotlyOutput('term_op')
-          ),
-          box(title = "Termination rate - leavers",
-              status = "warning",
-              width = 3,
-              plotlyOutput('term_leave_op'))
+          )
         
         )
       )
