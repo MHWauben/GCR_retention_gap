@@ -10,20 +10,9 @@ library(broom)
 library(DT)
 
 
-### Set theme -----
+### Save theme colours -----
 strong_palette <- c("#00aae6", "#ff8400", "#00d1fc")
 soft_palette <- c("#dcf4fe", "#fff0df")
-
-BIT_theme <- theme_minimal()+
-  theme(plot.title = element_text(color = "#00aae6",
-                                  size = rel(1.8)),
-        plot.subtitle = element_text(color = "#00aae6"),
-        strip.text.x = element_text(size = rel(1.1), 
-                                    colour = "black",
-                                    margin = margin(t = 2,
-                                                    b = 2)),
-        strip.background = element_rect(fill = "#dcf4fe", colour = NA))
-
 
 
 ### Loading and calculating data ------
@@ -48,14 +37,6 @@ data_timeline <- dplyr::full_join(data, all_years, by = "id") %>%
                 current = ifelse(is.na(reason), TRUE, FALSE),
                 term = ifelse(year != max(year), NA, as.numeric(term)),
                 new = hireYear == year)
-
-# Proportion of women in the workforce any year: ----
-workforce_prop_timeline <- data_timeline %>%
-  dplyr::group_by(year, gender) %>%
-  dplyr::summarise(n = n()) %>%
-  dplyr::mutate(prop_workforce = n / sum(n)) %>%
-  dplyr::filter(gender == "F") %>%
-  dplyr::select(year, prop_workforce)
 
 # Workforce over time - rate of termination -----
 workforce_trend <- data_timeline %>%
@@ -114,18 +95,19 @@ headline_plot <- function(year, var1, var2, name) {
           line = list(shape = "spline",
                       color = 'rgb(255, 132, 0)'),
           showlegend = TRUE,
-          hoverinfo = "all") %>%
+          hoverinfo = "y") %>%
     add_trace(y = ~var2, 
               name = 'Actual',
               type = 'scatter', mode = 'lines', 
               line = list(shape = "spline",
                           color = "rgb(0, 209, 252)"),
               showlegend = TRUE,
-              hoverinfo="all") %>%
+              hoverinfo="y") %>%
     layout(xaxis = list(title = "Year"),
            yaxis = list (title = "Number of women in the workforce"),
            legend = list(x = 100,
-                         y = 0.5))
+                         y = 0.5),
+           hovermode = 'compare')
 }
 
 # Comparing rates between genders:
@@ -136,7 +118,7 @@ two_lines <- function(year, var1, var2, name) {
                       shape = "spline",
                       color = 'rgba(255, 132, 0, 0.25)'),
           showlegend = FALSE,
-          hoverinfo = "all") %>%
+          hoverinfo = "y") %>%
     add_lines(y = ~fitted(loess(var1~year)),
               name = paste0("Female "), 
               line = list(color = 'rgba(255, 132, 0, 1)'),
@@ -148,12 +130,12 @@ two_lines <- function(year, var1, var2, name) {
                           shape = "spline",
                           color = "rgba(0, 209, 252, 0.25)"),
               showlegend = FALSE,
-              hoverinfo="all") %>%
+              hoverinfo="y") %>%
     add_lines(y = ~fitted(loess(var2~year)),
               name = paste0("Male "),
               line = list(color = "rgba(0, 209, 252, 1)"),
               showlegend = TRUE,
-              hoverinfo="false") %>%
+              hoverinfo="none") %>%
     layout(xaxis = list(title = " "),
            yaxis = list (title = "Rate"),
            legend = list(orientation = 'h', 

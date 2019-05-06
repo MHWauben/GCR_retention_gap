@@ -11,7 +11,7 @@ function(input, output) {
   })
   
   output$explanation <- renderUI({
-    HTML(paste0("As a proportion of the population, women and men join and leave at the same rate. ",
+    HTML(paste0("As a proportion of the population of that gender, women and men join and leave at the same rate. ",
            "However, at GCR women are much more likely to be terminated than men. ",
            "Termination is a human decision: this difference indicates some gender bias in the termination process. ",
            "This bias can be reduced through implementing behavioural insights interventions. ",
@@ -136,6 +136,14 @@ function(input, output) {
   
   
   # Rate plots -----
+  
+  output$breakdown <- renderUI({
+    HTML(paste0("This page show the joining, leaving, and termination rate broken down by department and gender. ",
+                "Each rate is calculated over the workforce in that category. ",
+                "For example, the Female joining rate in the Administrative department is the number of new women in that department divided by the total number of women in that department. ",
+                "<p/> ",
+                "This allows you to see clearly that the rate of termination is much higher in the female workforce, particularly in the administrative department. "))
+  })
   
   output$join_adm <- renderPlotly({
     two_lines(data_rate$year, 

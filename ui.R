@@ -34,7 +34,7 @@ ui <- dashboardPage(
           box(width = 8,
               status = "info",
               selectInput(inputId = "year_filter",
-                          label = "Year policy implemented",
+                          label = "Year termination policy became less biased",
                           choices = c(2005:(max(data$hireYear) - 3)),
                           selected = 2010)
           ),
@@ -49,23 +49,31 @@ ui <- dashboardPage(
       tabItem(tabName = "detail",
               fluidRow(
                 box(width = 12,
+                    h2("Joining, leaving and termination rates"),
+                    htmlOutput("breakdown"))
+              ),
+              fluidRow(
+                box(width = 12,
                     h2("Administrative department"))
               ),
         fluidRow(
           box(title = "Joining rate",
               status = "info",
               width = 4,
-              plotlyOutput('join_adm')
+              plotlyOutput('join_adm',
+                           height = '250px')
           ),
           box(title = "Leaving rate",
               status = "info",
               width = 4,
-              plotlyOutput('leave_adm')
+              plotlyOutput('leave_adm',
+                           height = '250px')
           ),
           box(title = "Termination rate",
               status = "warning",
               width = 4,
-              plotlyOutput('term_adm')
+              plotlyOutput('term_adm',
+                           height = '250px')
           )
         ),
         fluidRow(
@@ -76,17 +84,20 @@ ui <- dashboardPage(
           box(title = "Joining rate",
               status = "info",
               width = 4,
-              plotlyOutput('join_op')
+              plotlyOutput('join_op',
+                           height = '250px')
           ),
           box(title = "Leaving rate",
               status = "info",
               width = 4,
-              plotlyOutput('leave_op')
+              plotlyOutput('leave_op',
+                           height = '250px')
           ),
           box(title = "Termination rate - workforce",
               status = "warning",
               width = 4,
-              plotlyOutput('term_op')
+              plotlyOutput('term_op',
+                           height = '250px')
           )
         
         )
@@ -107,12 +118,16 @@ ui <- dashboardPage(
                                                       "Gender",
                                                       "Grade at Hire", 
                                                       "Age at Hire",
-                                                      "Hiring Year"),
+                                                      "Hiring Year",
+                                                      "Leaving Year",
+                                                      "Tenure"),
                                    choiceValues = list("department", 
                                                        "gender", 
                                                        "gradeAtHire",
                                                        "ageAtHire",
-                                                       "hireYear"),
+                                                       "hireYear",
+                                                       "leaveYear",
+                                                       "tenure"),
                                    inline = TRUE)
                 ),
                 box(width = 3,
