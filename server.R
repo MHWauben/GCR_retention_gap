@@ -13,6 +13,8 @@ function(input, output) {
   output$explanation <- renderUI({
     HTML(paste0("As a proportion of the population of that gender, women and men join and leave at the same rate. ",
            "However, at GCR women are much more likely to be terminated than men. ",
+           "To find out more, look at the 'Detail' and 'Statistics' tabs. ",
+           "<p/> ",
            "Termination is a human decision: this difference indicates some gender bias in the termination process. ",
            "This bias can be reduced through implementing behavioural insights interventions. ",
            "<p/> ",

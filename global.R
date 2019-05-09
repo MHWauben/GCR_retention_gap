@@ -90,14 +90,14 @@ data_rate <- data_timeline %>%
 # Headline forecast:
 headline_plot <- function(year, var1, var2, name) {
   plot_ly(x = ~year, y = ~var1, 
-          name = 'Forecast',
+          name = 'Non-biased termination',
           type = 'scatter', mode = 'lines', 
           line = list(shape = "spline",
                       color = 'rgb(255, 132, 0)'),
           showlegend = TRUE,
           hoverinfo = "y") %>%
     add_trace(y = ~var2, 
-              name = 'Actual',
+              name = 'Actual termination rate',
               type = 'scatter', mode = 'lines', 
               line = list(shape = "spline",
                           color = "rgb(0, 209, 252)"),
