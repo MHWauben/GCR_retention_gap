@@ -4,5 +4,4 @@ We are consulting with Great Circle Railways (GCR) on ways to reduce their gende
 
 # Task
 I produced a visualisation to illustrate why we have chosen to focus on retaining women as a key business priority.
-I chose a headline statistic that highlights this problem, taken from the data GCR have provided, and some visualisations that allows us to further justify this priority.
-You can use any software you like as long as there is no licence fee to pay to use it for commercial purposes. Stata is also allowed. The visualisation is interactive and uses software that requires no licence fee.
+I chose a headline statistic that highlights this problem, taken from the data GCR have provided, and some visualisations that allows us to further justify this priority. The visualisation is interactive and uses software that requires no licence fee.
