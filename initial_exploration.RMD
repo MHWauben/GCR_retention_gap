@@ -12,6 +12,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(gridExtra)
+library(zoo)
 
 strong_palette <- c("#00aae6", "#ff8400", "#00d1fc")
 soft_palette <- c("#dcf4fe", "#fff0df")
@@ -63,8 +64,7 @@ workforce_prop_timeline <- data_timeline %>%
   dplyr::group_by(year, gender) %>%
   dplyr::summarise(n = n()) %>%
   dplyr::mutate(prop_workforce = n / sum(n)) %>%
-  dplyr::filter(gender == "F") %>%
-  dplyr::select(year, prop_workforce)
+  dplyr::filter(gender == "F") 
 
 
 # People who have left: ----
@@ -86,7 +86,7 @@ I explored univariate and bivariate distributions of variables I hypothesise may
 <div class="collapse" id="collapse1">
   <div class="card card-body">
 
-```{r visualise current workforce}
+```{r visualise current workforce, message=FALSE}
 data_current <- data[data$current, ]
 summary(data_current)
 # Age by gender
@@ -139,7 +139,7 @@ ggplot(data_current, aes(x = gend_dept, y = ageAtHire))+
 <div class="collapse" id="collapse2">
   <div class="card card-body">
 
-```{r visualise leavers}
+```{r visualise leavers, message=FALSE}
 # Were there peak leaving years?
 hist(data_left$leaveYear, breaks = length(unique(data_left$leaveYear)))
 # There were some spikes: 1986, 2002, 2008/9
@@ -198,13 +198,13 @@ ggplot(data_left, aes(x = gend_dept, y = ageAtHire))+
 
 Calculate the proportion of women in each section of the workforce (department) in a given year, and compare that to the overall proportion of women in the whole workforce.
 
-```{r workforce in any year}
+```{r workforce in any year, message=FALSE}
 data_dept_timeline <- data_timeline  %>%
   dplyr::group_by(year, department, gender) %>%
   dplyr::summarise(n = n()) %>%
   dplyr::mutate(prop = n / sum(n)) %>%
   dplyr::filter(gender == "F") %>%
-  left_join(., workforce_prop_timeline, by = "year")
+  left_join(., workforce_prop_timeline[, c("year", "prop_workforce")], by = "year")
 ggplot(data_dept_timeline, aes(x = year, y = prop, colour = department))+
   geom_line()+
   geom_smooth(alpha = 0.25)+
@@ -223,7 +223,7 @@ ggplot(data_dept_timeline, aes(x = year, y = prop, colour = department))+
 
 Starting from some basic density plots, I can calculate the proportion of leavers who are women for each separate leaving reason. This tells me whether there are specific reasons that women leave for more often than the general population. Because I saw above that there is a significant difference between the numbers of women between each department, I calculate the reasons separately for each department. 
 
-```{r Reasons for leaving}
+```{r Reasons for leaving, message=FALSE}
 # Reasons for leaving by gender and department
 ggplot(data_left, aes(x = gend_dept, y = reason))+
   geom_bin2d()+
@@ -290,7 +290,7 @@ I want to dig deeper into this association between gender and being terminated. 
 <div class="collapse" id="collapse3">
   <div class="card card-body">
 
-```{r characteristics of terminated people}
+```{r characteristics of terminated people, message=FALSE}
 library("graphics")
 data_dept <- as.table(as.matrix(table(data_left$department, data_left$term)))
 mosaicplot(data_dept, shade = TRUE, las=2, main = "Department")
@@ -315,14 +315,14 @@ mosaicplot(data_grade, shade = TRUE, las=2, main = "GradeAtHire")
 
 I then formalised these analyses with an ANOVA analysis on termination.
 
-```{r anova on termination}
+```{r anova on termination, message=FALSE}
 summary(aov(term ~ gradeAtHire * department * gender * ageAtHire * leaveYear, data = data_left))
 # Main effects of department, gender, and hireYear, but 3-way interaction of GradeAtHire, gender and HireYear
 ```
 
 And visualised the three-way interaction I observed in the analysis.
 
-```{r vis termination interaction}
+```{r vis termination interaction, message=FALSE}
 data_term_leave <- data_left %>%
   dplyr::group_by(leaveYear, department, gender) %>%
   dplyr::summarise(leave_left = n(),
@@ -383,7 +383,7 @@ grid.arrange(r1, r2, ncol = 1)
 
 
 
-```{r rate of termination for men and women}
+```{r rate of termination for men and women, message=FALSE}
 data_rate <- data_timeline %>%
   dplyr::group_by(year, department, gender) %>%
   dplyr::summarise(workforce = n(),
@@ -414,6 +414,172 @@ ggplot(data_rate, aes(x = year, y = value, colour = gender))+
   scale_colour_manual(values = strong_palette)
 ```
 
+# Male and female firing rates
+
+So what would have happened if women had been fired at the same rate as men for the last few years?
+
+First, I calculated a 5-year rolling average of the rate of termination for men, and used that to calculate the female workforce based on the actual workforce.
+
+```{r termination rate, message=FALSE}
+
+# Workforce forecast: -----
+yeargenderreason <- expand.grid(year = unique(data_timeline$year),
+                        gender = unique(data_timeline$gender),
+                        reason = unique(data_timeline$reason))
+new_year <- data_timeline %>%
+  dplyr::group_by(year, gender) %>%
+  summarise(new = sum(new))
+workforce_trend <- data_timeline %>%
+  dplyr::group_by(year, gender, reason) %>%
+  dplyr::summarise(number = n()) %>%
+  merge(., yeargenderreason, all.x = T, all.y = T, by = c("year", "gender", "reason")) %>%
+  dplyr::mutate(number = ifelse(is.na(number), 0, number),
+                reason = ifelse(is.na(reason), "stayed", reason)) %>%
+  tidyr::spread(reason, number) %>%
+  merge(., new_year, all.x = T, all.y = T, by = c("year", "gender")) %>%
+  dplyr::mutate(total = stayed + retired + resigned + terminated) %>%
+  dplyr::mutate(join_rate = new / total,
+                term_rate = terminated / total,
+                nonterm_rate = (retired + resigned) / total) %>%
+  dplyr::ungroup() %>%
+  dplyr::group_by(gender) %>%
+  dplyr::mutate(join_avg = zoo::rollmean(join_rate, 5, na.pad = T, align = "right"),
+                term_avg = zoo::rollmean(term_rate, 5, na.pad = T, align = "right"),
+                nonterm_avg = zoo::rollmean(nonterm_rate, 5, na.pad = T, align = "right"))
+
+f_rates <- workforce_trend %>%
+  dplyr::filter(year == 2017) %>%
+  dplyr::mutate(type = "f_rates",
+                year1 = total + total * join_avg - total * term_avg - total * nonterm_avg) %>%
+  dplyr::mutate(year2 = year1 + year1 * join_avg - year1 * term_avg - year1 * nonterm_avg) %>%
+  dplyr::mutate(year3 = year2 + year2 * join_avg - year2 * term_avg - year2 * nonterm_avg) %>%
+  dplyr::mutate(year4 = year3 + year3 * join_avg - year3 * term_avg - year3 * nonterm_avg) %>%
+  dplyr::mutate(year5 = year4 + year4 * join_avg - year4 * term_avg - year4 * nonterm_avg) %>%
+  dplyr::select(gender, type, `2017` = total, `2018` = year1, 
+                `2019` = year2, `2020` = year3, `2021` = year4, `2022` = year5)
+m_join_avg <- workforce_trend %>%
+  dplyr::filter(gender == "M", year == 2017) %>%
+  .$join_avg
+m_term_avg <- workforce_trend%>%
+  dplyr::filter(gender == "M", year == 2017) %>%
+  .$term_avg
+m_nonterm_avg <- workforce_trend%>%
+  dplyr::filter(gender == "M", year == 2017) %>%
+  .$nonterm_avg
+m_rates <- workforce_trend %>%
+  dplyr::filter(year == 2017) %>%
+  dplyr::mutate(type = "m_rates",
+                year1 = total + total * join_avg - total * m_term_avg - total * nonterm_avg) %>%
+  dplyr::mutate(year2 = year1 + year1 * join_avg - year1 * m_term_avg - year1 * nonterm_avg) %>%
+  dplyr::mutate(year3 = year2 + year2 * join_avg - year2 * m_term_avg - year2 * nonterm_avg) %>%
+  dplyr::mutate(year4 = year3 + year3 * join_avg - year3 * m_term_avg - year3 * nonterm_avg) %>%
+  dplyr::mutate(year5 = year4 + year4 * join_avg - year4 * m_term_avg - year4 * nonterm_avg) %>%
+  dplyr::select(gender, type, `2017` = total, `2018` = year1, 
+                `2019` = year2, `2020` = year3, `2021` = year4, `2022` = year5)
+
+workforce_true <- workforce_trend %>%
+  dplyr::filter(gender == "F", year < 2017) %>%
+  dplyr::mutate(f_rates = total,
+                m_rates = total) %>%
+  dplyr::select(gender, year, f_rates, m_rates)
+
+pop <- rbind(f_rates, m_rates) %>%
+  tidyr::gather(year, value, -(gender:type)) %>%
+  tidyr::spread(type, value) %>%
+  dplyr::mutate(f_rates = round(f_rates, 0),
+                m_rates = round(m_rates, 0),
+                year = as.numeric(year)) %>%
+  dplyr::filter(gender == "F")  %>%
+  rbind(workforce_true, .) %>%
+  tidyr::gather(key, value, -(gender:year)) %>%
+  dplyr::filter(year > 2010)
+  
+ggplot(pop, aes(x = year, y = value, group = key, colour = key))+
+  geom_line(stat = "identity")
+```
+
+This prediction is clearly too linear and static. Instead, I decomposed the rate of termination for men to obtain its trend, and applied that trend to the female rate of termination. Using that rate of termination, I could calculate what the female workforce would've been each year. 
+
+I chose 2010 as the starting year to see what the impact would've been compounded over a few years. 
+
+```{r forecasting, message=FALSE}
+library(forecast)
+
+# How many women would you have had now if you had fired them at the same rate as men since 2011?
+workforce_freq <- rbind(workforce_trend %>% mutate(qrt = "1"),
+                        workforce_trend %>% mutate(qrt = "3")) %>%
+  dplyr::filter(year > 2010) %>%
+  ungroup()
+
+m_term <- ts(workforce_freq[workforce_freq$gender == "M", ]$term_rate, frequency = 2) %>%
+  decompose(type = "multiplicative")
+plot(m_term)
+
+f_term <- ts(workforce_freq[workforce_freq$gender == "F", ]$term_rate, frequency = 2) %>%
+  decompose(type = "multiplicative")
+plot(f_term)
+
+f_f_forecast <- f_term$seasonal * f_term$random * f_term$trend
+f_m_forecast <- f_term$seasonal * f_term$random * m_term$trend
+
+plot(f_f_forecast)
+plot(f_m_forecast)
+
+# Calculate the rate of change if 
+library(data.table)
+workforce_freq_new <- workforce_freq %>%
+  dplyr::filter(gender == "F") %>%
+  dplyr::mutate(f_m_forecast = c(as.vector(f_m_forecast[2:length(f_m_forecast)]), 2),
+                workforce = total) %>%
+  dplyr::mutate(forecast_term = total * f_m_forecast) %>%
+  dplyr::mutate(prev_term = lag(forecast_term, 1)) %>%
+  dplyr::mutate(change = new - resigned - retired - prev_term) %>%
+  dplyr::select(year, gender, workforce, change) %>%
+  setDT(.)
+
+# Calculate what the workforce would've been at this rate of change each year
+for (row in 3:nrow(workforce_freq_new)){
+  new_workforce <- workforce_freq_new[row - 1L, workforce + change]
+  workforce_freq_new[row, workforce := new_workforce]
+}
+workforce_freq_new <- workforce_freq_new[, .(forecast_workforce = mean(workforce)), by = "year"] %>%
+  rbind(., workforce_trend %>% 
+          filter(year <= 2010 & gender == "F") %>% 
+          ungroup () %>% select(year, forecast_workforce = total))
+
+
+# Combine the actual female workforce and the forecasted workforce
+workforce_results <- workforce_freq %>%
+  dplyr::select(-qrt) %>%
+  unique(.) %>%
+  dplyr::filter(gender == "F") %>%
+  dplyr::select(year, total) %>%
+  rbind(., workforce_trend %>% 
+          filter(year <= 2010 & gender == "F") %>% 
+          ungroup () %>% 
+          select(year, total)) %>%
+  merge(., workforce_freq_new, by = "year") %>%
+  dplyr::select(year, 
+                "Actual" = total, 
+                "Forecast" = forecast_workforce) %>%
+  tidyr::gather(key, value, -year)
+
+# Plot
+ggplot(workforce_results[workforce_results$year > 2005, ], 
+       aes(x = year, y = value, colour = reorder(key, desc(key))))+
+  geom_line()+
+  geom_line(data = workforce_results[workforce_results$year <= 2010 & 
+                                       workforce_results$year > 2005, ])+
+  # geom_smooth(data = workforce_results[workforce_results$year > 2009, ], 
+  #             se = FALSE)+
+  labs(title = "If women had been fired at the same rate as men...",
+       subtitle = "By now, you'd have nearly 100 more women",
+       x = "Year",
+       y = "Number of women in the workforce",
+       colour = " ")+
+  BIT_theme+
+  scale_colour_manual(values = c(strong_palette[2], strong_palette[1]))
+```
 
 
 
