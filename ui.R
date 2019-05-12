@@ -1,5 +1,9 @@
 ui <- dashboardPage(
-  dashboardHeader(title = "GCR retention gap"),
+  dashboardHeader(title = "GCR retention gap",
+                  tags$li(a(href = 'https://github.com/MHWauben/GCR_retention_gap',
+                            icon("github"),
+                            title = "To code repository"),
+                          class = "dropdown")),
   dashboardSidebar(sidebarMenu(
     id = "tabs",
     menuItem(
